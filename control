@@ -1,0 +1,8 @@
+Package: com.yourname.autotouch
+Name: AutoTouch Menu
+Depends: mobilesubstrate
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Floating Menu for AutoTouch with custom click targets and speed slider.
+Maintainer: Developer
+Author: Developer
