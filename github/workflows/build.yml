@@ -1,4 +1,4 @@
-name: AutoTouch Builder
+name: AutoTouch Complete Builder
 on:
   workflow_dispatch:
 jobs:
@@ -7,8 +7,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Prepare Code
+
+    - name: Generate All Missing Files
       run: |
+        # 1. إنشاء ملف الكود الأساسي للموقع والأزرار
         cat << 'EOF' > ContentView.swift
         import SwiftUI
         import WebKit
@@ -20,7 +22,7 @@ jobs:
             @State private var clickTargets: [CGPoint] = []
             var body: some View {
                 ZStack {
-                    WebView(url: URL(string: "https://google.com")!).edgesIgnoringSafeArea(.all)
+                    WebView(url: URL(string: "https://www.google.com")!).edgesIgnoringSafeArea(.all)
                     ForEach(0..<clickTargets.count, id: \.self) { i in
                         Circle().fill(Color.red.opacity(0.8)).frame(width:35, height:35)
                             .overlay(Text("\(i+1)").foregroundColor(.white).bold()).position(clickTargets[i])
@@ -55,17 +57,47 @@ jobs:
         }
         @main struct AutoApp: App { var body: some Scene { WindowGroup { ContentView() } } }
         EOF
-        mkdir -p AutoTouch.xcodeproj
-        echo '{"cliArgs": []}' > AutoTouch.xcodeproj/project.xcworkspace
-    - name: Compile App
+
+        # 2. إنشاء ملف الخصائص ومعلومات التطبيق (Info.plist) الناقص
+        cat << 'EOF' > Info.plist
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>AutoTouch</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.yourname.AutoTouch</string>
+            <key>CFBundleName</key>
+            <string>AutoTouch</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>PackageType</key>
+            <string>APPL</string>
+            <key>LSRequiresIPhoneOS</key>
+            <true/>
+        </dict>
+        </plist>
+        EOF
+
+    - name: Compile and Create App Package
       run: |
-        xcodebuild archive -project AutoTouch.xcodeproj -scheme AutoTouch -sdk iphoneos -configuration Release -archivePath $PWD/build/AutoTouch.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-    - name: Package IPA
-      run: |
+        # تجميع كود الـ Swift مباشرة إلى تطبيق تنفيذي بدون ملف مشروع معقد
+        xcrun -sdk iphoneos swiftc -o AutoTouch ContentView.swift -target arm64-apple-ios14.0
+        
+        # إنشاء مجلد التطبيق ووضع الملفات داخله
+        mkdir -p AutoTouch.app
+        mv AutoTouch AutoTouch.app/
+        mv Info.plist AutoTouch.app/
+        
+        # حزم التطبيق داخل ملف IPA الجاهز للتثبيت
         mkdir -p Payload
-        cp -r build/AutoTouch.xcarchive/Products/Applications/*.app Payload/ 2>/dev/null || true
+        cp -r AutoTouch.app Payload/
         zip -r AutoTouch.ipa Payload
-    - name: Upload
+
+    - name: Upload Finished App
       uses: actions/upload-artifact@v4
       with:
         name: AutoTouchApp
